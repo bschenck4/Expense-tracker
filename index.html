@@ -1,20 +1,23 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Expense Tracker - Google Sheets</title>
+    <title>Expense Tracker - Grouped by Category</title>
     <style>
       body { font-family: Arial, sans-serif; }
-      table { margin-top: 16px; border-collapse: collapse; }
+      h1 { margin-bottom: 0; }
+      h2 { margin-top: 2em; }
+      table { margin-top: 8px; border-collapse: collapse; }
       th, td { padding: 8px 16px; border: 1px solid #ccc; }
       tfoot { font-weight: bold; background: #f9f9f9; }
-      #totalBox { margin-top: 20px; font-size: 1.2em; }
+      .category-table { margin-bottom: 32px; }
+      .totalBox { font-size: 1.2em; margin-top: 16px; }
     </style>
   </head>
   <body>
     <h1>My Expenses</h1>
     <button onclick="loadExpenses()">Load Expenses</button>
-    <table id="expenseTable"></table>
-    <div id="totalBox"></div>
+    <div id="tablesContainer"></div>
+    <div id="grandTotalBox" class="totalBox"></div>
     <script>
       function loadExpenses() {
         const sheetUrl = "https://docs.google.com/spreadsheets/d/15Y065-EpGQ-698FJNdmk92VDSdqchLfOGe7IPsYa_2o/export?format=csv";
@@ -22,25 +25,78 @@
           .then(response => response.text())
           .then(csv => {
             const rows = csv.split('\n').map(row => row.split(','));
-            const table = document.getElementById('expenseTable');
-            table.innerHTML = '';
-            let total = 0;
-            rows.forEach((row, i) => {
-              const tr = document.createElement('tr');
-              row.forEach((cell, j) => {
-                const td = document.createElement(i === 0 ? 'th' : 'td');
-                td.textContent = cell;
-                tr.appendChild(td);
-                // If not header and this is the Amount column (index 3), add to total
-                if (i > 0 && j === 3) {
-                  const val = parseFloat(cell);
-                  if (!isNaN(val)) total += val;
-                }
-              });
-              table.appendChild(tr);
+            if (!rows.length) return;
+            const headers = rows[0];
+            const dataRows = rows.slice(1).filter(r => r.length === headers.length && r[3].trim() !== '');
+
+            // Group expenses by category
+            const byCategory = {};
+            let grandTotal = 0;
+            dataRows.forEach(row => {
+              const category = row[1].trim();
+              const amount = parseFloat(row[3]);
+              if (!isNaN(amount)) {
+                if (!byCategory[category]) byCategory[category] = { rows: [], total: 0 };
+                byCategory[category].rows.push(row);
+                byCategory[category].total += amount;
+                grandTotal += amount;
+              }
             });
-            // Show total below the table
-            document.getElementById('totalBox').textContent = "Total Spent: $" + total.toFixed(2);
+
+            // Display tables for each category
+            const container = document.getElementById('tablesContainer');
+            container.innerHTML = '';
+            Object.keys(byCategory).forEach(category => {
+              const catData = byCategory[category];
+              const table = document.createElement('table');
+              table.className = "category-table";
+              // Table header
+              const thead = document.createElement('thead');
+              const trHead = document.createElement('tr');
+              headers.forEach(h => {
+                const th = document.createElement('th');
+                th.textContent = h;
+                trHead.appendChild(th);
+              });
+              thead.appendChild(trHead);
+              table.appendChild(thead);
+
+              // Table body
+              const tbody = document.createElement('tbody');
+              catData.rows.forEach(row => {
+                const tr = document.createElement('tr');
+                row.forEach(cell => {
+                  const td = document.createElement('td');
+                  td.textContent = cell;
+                  tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+              });
+              table.appendChild(tbody);
+
+              // Table footer (category total)
+              const tfoot = document.createElement('tfoot');
+              const trFoot = document.createElement('tr');
+              headers.forEach((h, idx) => {
+                const td = document.createElement('td');
+                if (idx === 0) td.textContent = 'Category Total';
+                else if (idx === 3) td.textContent = '$' + catData.total.toFixed(2);
+                else td.textContent = '';
+                trFoot.appendChild(td);
+              });
+              tfoot.appendChild(trFoot);
+              table.appendChild(tfoot);
+
+              // Category title
+              const h2 = document.createElement('h2');
+              h2.textContent = category;
+              container.appendChild(h2);
+              container.appendChild(table);
+            });
+
+            // Show grand total
+            document.getElementById('grandTotalBox').textContent =
+              "Grand Total Spent: $" + grandTotal.toFixed(2);
           });
       }
     </script>
