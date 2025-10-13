@@ -24,17 +24,23 @@
         fetch(sheetUrl)
           .then(response => response.text())
           .then(csv => {
-            const rows = csv.split('\n').map(row => row.split(','));
+            // Try splitting by comma or tab (auto-detect)
+            let delimiter = ',';
+            if (csv.includes('\t')) delimiter = '\t';
+            const rows = csv.split('\n').map(row => row.split(delimiter));
             if (!rows.length) return;
-            const headers = rows[0];
-            const dataRows = rows.slice(1).filter(r => r.length === headers.length && r[3].trim() !== '');
+            const headers = rows[0].map(h => h.trim());
+            const amountIdx = headers.findIndex(h => h.toLowerCase() === "amount");
+            const dataRows = rows.slice(1).filter(r => r.length === headers.length && r[amountIdx] && r[amountIdx].trim() !== '');
 
             // Group expenses by category
             const byCategory = {};
             let grandTotal = 0;
             dataRows.forEach(row => {
               const category = row[1].trim();
-              const amount = parseFloat(row[3]);
+              let rawAmount = row[amountIdx] || "";
+              rawAmount = rawAmount.replace(/[^0-9.\-]+/g, '');
+              const amount = parseFloat(rawAmount);
               if (!isNaN(amount)) {
                 if (!byCategory[category]) byCategory[category] = { rows: [], total: 0 };
                 byCategory[category].rows.push(row);
@@ -80,7 +86,7 @@
               headers.forEach((h, idx) => {
                 const td = document.createElement('td');
                 if (idx === 0) td.textContent = 'Category Total';
-                else if (idx === 3) td.textContent = '$' + catData.total.toFixed(2);
+                else if (idx === amountIdx) td.textContent = '$' + catData.total.toFixed(2);
                 else td.textContent = '';
                 trFoot.appendChild(td);
               });
