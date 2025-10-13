@@ -9,7 +9,7 @@
     <table id="expenseTable" border="1"></table>
     <script>
       function loadExpenses() {
-        const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQSnrkhsuAUKW6VB4vYmrCXGSWu6vT1l_Tz6kGzrkv6iYvlumOJjH7DQeYeXsgqGpdbExBGQ-47c3DV/pubhtml";
+        const sheetUrl = "https://docs.google.com/spreadsheets/d/15Y065-EpGQ-698FJNdmk92VDSdqchLfOGe7IPsYa_2o/export?format=csv";
         fetch(sheetUrl)
           .then(response => response.text())
           .then(csv => {
